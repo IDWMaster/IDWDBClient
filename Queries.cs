@@ -49,18 +49,79 @@ namespace IDWDBClient
     {
         public QueryOpType type;
         public object value;
+        public QueryOperation(string tableName)
+        {
+            Name = tableName;
+        }
+        //Table name
+        public string Name;
+        public byte[] Serialize()
+        {
+            MemoryStream mstream = new MemoryStream();
+            BinaryWriter dwriter = new BinaryWriter(mstream);
+            switch(type)
+            {
+                case QueryOpType.FetchKeys:
+                    {
+                        List<object> fetch_keys = value as List<object>;
+                        dwriter.Write((byte)0);
+                        foreach (var iable in fetch_keys)
+                        {
+                            byte[] serialized = DataRow.SerializePK(iable, Name);
+                            dwriter.Write((short)serialized.Length);
+                            dwriter.Write(serialized);
+                        }
+                    }
+                    break;
+                case QueryOpType.FetchRanges:
+                    {
+                        dwriter.Write((byte)3);
+                        List<Range> fetch_ranges = value as List<Range>;
+                        foreach (var iable in fetch_ranges)
+                        {
+                            byte[] start = DataRow.SerializePK(iable.Start, Name);
+                            byte[] end = DataRow.SerializePK(iable.End, Name);
+                            dwriter.Write((short)start.Length);
+                            dwriter.Write(start);
+                            dwriter.Write((short)end.Length);
+                            dwriter.Write(end);
+                        }
+
+                    }
+                    break;
+                case QueryOpType.InsertRows:
+                    {
+                        List<DataRow> insert_rows = value as List<DataRow>;
+                        dwriter.Write((byte)1);
+                        dwriter.Write(insert_rows.Count);
+                        foreach (var iable in insert_rows)
+                        {
+                            iable.SerializeRow(dwriter);
+                        }
+                    }
+                    break;
+            }
+            return mstream.ToArray();
+        }
     }
     /// <summary>
     /// Represents a query accessing one or more tables.
     /// </summary>
     public class TableQuery
     {
-        internal List<object> fetch_keys = new List<object>();
-        internal List<DataRow> insert_rows = new List<DataRow>();
-        internal List<Range> fetch_ranges = new List<Range>();
 
         internal List<QueryOperation> ops = new List<QueryOperation>();
-
+        QueryOperation Last
+        {
+            get
+            {
+                if (ops.Count == 0)
+                {
+                    return null;
+                }
+                return ops[ops.Count - 1];
+            }
+        }
         internal string Name { get; set; }
         /// <summary>
         /// Constructs a table query given a specified table name
@@ -77,6 +138,14 @@ namespace IDWDBClient
         /// <returns></returns>
         public TableQuery Retrieve(Range range)
         {
+            List<Range> fetch_ranges = new List<Range>();
+            if(Last?.type == QueryOpType.FetchRanges)
+            {
+                fetch_ranges = Last.value as List<Range>;
+            }else
+            {
+                ops.Add(new QueryOperation(Name) { type = QueryOpType.FetchRanges, value = fetch_ranges });
+            }
             fetch_ranges.Add(range);
             return this;
         }
@@ -87,6 +156,15 @@ namespace IDWDBClient
         /// <returns></returns>
         public TableQuery Retrieve(IEnumerable<object> keys)
         {
+            List<object> fetch_keys = new List<object>();
+            if (Last?.type == QueryOpType.FetchKeys)
+            {
+                fetch_keys = Last.value as List<object>;
+            }
+            else
+            {
+                ops.Add(new QueryOperation(Name) { type = QueryOpType.FetchKeys, value = fetch_keys });
+            }
             fetch_keys.AddRange(keys);
             return this;
         }
@@ -106,6 +184,14 @@ namespace IDWDBClient
         /// <returns></returns>
         public TableQuery InsertOrReplace(IEnumerable<DataRow> rows)
         {
+            List<DataRow> insert_rows = new List<DataRow>();
+            if (Last?.type == QueryOpType.InsertRows)
+            {
+                insert_rows = Last.value as List<DataRow>;
+            }else
+            {
+                ops.Add(new QueryOperation(Name) { type = QueryOpType.InsertRows,value = insert_rows });
+            }
             insert_rows.AddRange(rows.Select(m=> { m.TableName = Name;return m; }));
             return this;
         }
@@ -122,51 +208,13 @@ namespace IDWDBClient
             MemoryStream mstream = new MemoryStream();
             BinaryWriter mwriter = new BinaryWriter(mstream);
             mwriter.Write((byte)2);
-            if (fetch_keys.Count > 0)
+            foreach(var iable in ops)
             {
-                MemoryStream dstream = new MemoryStream();
-                BinaryWriter dwriter = new BinaryWriter(dstream);
-                dwriter.Write((byte)0);
-                foreach (var iable in fetch_keys)
-                {
-                    byte[] serialized = DataRow.SerializePK(iable,Name);
-                    dwriter.Write((short)serialized.Length);
-                    dwriter.Write(serialized);
-                }
-                byte[] me = dstream.ToArray();
-                mwriter.Write(me.Length);
-                mwriter.Write(me);
-            }
-            foreach (var iable in fetch_ranges)
-            {
-                MemoryStream dstream = new MemoryStream();
-                BinaryWriter dwriter = new BinaryWriter(dstream);
-                dwriter.Write((byte)3);
-                byte[] start = DataRow.SerializePK(iable.Start,Name);
-                byte[] end = DataRow.SerializePK(iable.End,Name);
-                dwriter.Write((short)start.Length);
-                dwriter.Write(start);
-                dwriter.Write((short)end.Length);
-                dwriter.Write(end);
-                byte[] me = dstream.ToArray();
-                mwriter.Write(me.Length);
-                mwriter.Write(me);
+                byte[] serialized = iable.Serialize();
+                mwriter.Write(serialized.Length);
+                mwriter.Write(serialized);
             }
             
-            if (insert_rows.Count > 0)
-            {
-                MemoryStream dstream = new MemoryStream();
-                BinaryWriter dwriter = new BinaryWriter(dstream);
-                dwriter.Write((byte)1);
-                dwriter.Write(insert_rows.Count);
-                foreach (var iable in insert_rows)
-                {
-                    iable.SerializeRow(dwriter);
-                }
-                byte[] me = dstream.ToArray();
-                mwriter.Write(me.Length);
-                mwriter.Write(me);
-            }
 
 
 
