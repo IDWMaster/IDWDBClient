@@ -16,20 +16,19 @@
 /*!
 *    \mainpage IDWDB Documentation
 *    \section intro_sec Introduction
-*    To use IDWDB, start by creating a IDWDBClient.DatabaseClient, and calling the ConnectAsync function to establish a connection to the database server.
+*    IDWDB is a fully-managed database PaaS (Platform-as-a-Service) offering. IDWDB is a NoSQL, highly scalable database. With IDWDB, you simply select a usage tier, based on expected consumer demand, and we handle the rest! IDWDB can dynamically scale based on customer demand, and clusters are self-healing, to prevent any downtime or loss of data in the event of a single-server failure.
 *    <h3>Queries</h3>
-*    IDWDB is internally represented as a key-value store database. Each row is represented in the server by a primary key, and a data column; which is an array of bytes sent to the server.
 *    IDWDB supports the following basic query operations: 
 *        - Retrieve records based on list of primary keys (highly efficient; will only query servers in the cluster which hold effected records)
-*        - Retrieve records (less efficient; will be dispatched to all primary servers in a cluster)
+*        - Retrieve records (less efficient; same query will be dispatched to multiple servers in a cluster)
 *        - Insert list of records
 *        - Delete list of records based on primary keys (highly efficient; will only query servers in the cluster which hold effected records)
-*        - Delete range of records (less efficient; will be dispatched to all primary servers in a cluster)
+*        - Delete range of records (less efficient in transaction queries)
 *        - Batch query (some combination of the above operations; typically more efficient than sending out multiple queries)
 *    <h3>Transactions</h3>
 *    By default; each write to a row in the database is an atomic operation. If multiple write operations are batched in a single query; some operations may succeed, and others may fail; potentially leaving the database in an inconsistent state. To avoid this problem; it is possible to enable support for transactions in the client library. Transactions may be enabled by setting IDWDBClient.DatabaseClient.TransactionsEnabled to true. To begin a new transaction; you may call IDWDBClient.DatabaseClient.BeginTransaction to start a new transaction, and IDWDBClient.DatabaseClient.EndTransaction to commit (or rollback) a transaction in the database. Using transactions is only advised when absolutely necessary; as transactions can significantly decrease the amount of parallelism in the database. If you don't need transactional consistency, it is recommended to leave them disabled. Transactions can be enabled/disabled quickly on a per-connection level.
 *    <h3>Using IDWDB as a relational/table-driven database</h3>
-*    In most cases; rather than querying the key-value store directly, you will want to create tables with rows, columns, and relationships between tables. Although IDWDB has no internal concept of such data structures; these features are implemented client-side in our client libraries. To create such queries; use the IDWDBClient.DBQuery.CreateTableQuery function. This will allow you to view the key-value store as a relational database, with support for joins, and transactional consistency involving multiple physical rows of data.
+*    IDWDB is exposed as a table-driven database to the client, via the IDWDBClient.TableQuery class. Table queries allow you to query the key-value store database as if it is a collection of tables, simplifying many common database programming tasks.
 * 
 */
 

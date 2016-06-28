@@ -23,15 +23,32 @@ using System.Threading.Tasks;
 using System.IO;
 namespace IDWDBClient
 {
+    /// <summary>
+    /// Represents a Range; used in a Range query.
+    /// </summary>
     public class Range
     {
         internal object Start;
         internal object End;
+        /// <summary>
+        /// Creates a new Rage object
+        /// </summary>
+        /// <param name="start">The starting element</param>
+        /// <param name="end">The ending element</param>
         public Range(object start, object end)
         {
             Start = start;
             End = end;
         }
+    }
+    enum QueryOpType
+    {
+        FetchKeys, InsertRows, FetchRanges
+    }
+    internal class QueryOperation
+    {
+        public QueryOpType type;
+        public object value;
     }
     /// <summary>
     /// Represents a query accessing one or more tables.
@@ -41,15 +58,23 @@ namespace IDWDBClient
         internal List<object> fetch_keys = new List<object>();
         internal List<DataRow> insert_rows = new List<DataRow>();
         internal List<Range> fetch_ranges = new List<Range>();
+
+        internal List<QueryOperation> ops = new List<QueryOperation>();
+
         internal string Name { get; set; }
         /// <summary>
         /// Constructs a table query given a specified table name
         /// </summary>
-        /// <param name="name">The name of the table to query</param>
+        /// <param name="name">The name of the base table to query</param>
         public TableQuery(string name)
         {
             Name = name;
         }
+        /// <summary>
+        /// Retrieves a list of data given by the specified range (exclusive)
+        /// </summary>
+        /// <param name="range">The range to retrieve</param>
+        /// <returns></returns>
         public TableQuery Retrieve(Range range)
         {
             fetch_ranges.Add(range);
@@ -83,6 +108,14 @@ namespace IDWDBClient
         {
             insert_rows.AddRange(rows.Select(m=> { m.TableName = Name;return m; }));
             return this;
+        }
+        /// <summary>
+        /// Inserts a series of rows; or replace them if they already exist.
+        /// </summary>
+        /// <param name="rows">The rows to insert</param>
+        public TableQuery InsertOrReplace(params DataRow[] rows)
+        {
+            return InsertOrReplace(rows as IEnumerable<DataRow>);
         }
         internal byte[] Serialize()
         {
