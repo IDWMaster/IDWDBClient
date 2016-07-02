@@ -40,10 +40,22 @@ namespace IDWDBClient
             Start = start;
             End = end;
         }
+
+        /// <summary>
+        /// Creates a Range containing all matching entries starting with the specified string
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static Range StartsWith(string value)
+        {
+            StringBuilder upperBound = new StringBuilder(value);
+            upperBound[upperBound.Length - 1]++;
+            return new Range(value, upperBound.ToString());
+        }
     }
     enum QueryOpType
     {
-        FetchKeys, InsertRows, FetchRanges
+        FetchKeys, InsertRows, FetchRange, UseTransaction, Delete, RangeDelete
     }
     internal class QueryOperation
     {
@@ -73,19 +85,19 @@ namespace IDWDBClient
                         }
                     }
                     break;
-                case QueryOpType.FetchRanges:
+                case QueryOpType.FetchRange:
                     {
+
                         dwriter.Write((byte)3);
-                        List<Range> fetch_ranges = value as List<Range>;
-                        foreach (var iable in fetch_ranges)
-                        {
+                        Range iable = value as Range;
+                        
                             byte[] start = DataRow.SerializePK(iable.Start, Name);
                             byte[] end = DataRow.SerializePK(iable.End, Name);
                             dwriter.Write((short)start.Length);
                             dwriter.Write(start);
                             dwriter.Write((short)end.Length);
                             dwriter.Write(end);
-                        }
+                        
 
                     }
                     break;
@@ -98,6 +110,35 @@ namespace IDWDBClient
                         {
                             iable.SerializeRow(dwriter);
                         }
+                    }
+                    break;
+                case QueryOpType.UseTransaction:
+                    {
+                        dwriter.Write((byte)6);
+                    }
+                    break;
+                case QueryOpType.Delete:
+                    {
+                        List<object> delete_keys = value as List<object>;
+                        dwriter.Write((byte)4);
+                        foreach(var iable in delete_keys)
+                        {
+                            byte[] key = DataRow.SerializePK(iable, Name);
+                            dwriter.Write((short)key.Length);
+                            dwriter.Write(key);
+                        }
+                    }
+                    break;
+                case QueryOpType.RangeDelete:
+                    {
+                        Range er = value as Range;
+                        dwriter.Write((byte)5);
+                        byte[] start = DataRow.SerializePK(er.Start, Name);
+                        byte[] end = DataRow.SerializePK(er.End, Name);
+                        dwriter.Write((short)start.Length);
+                        dwriter.Write(start);
+                        dwriter.Write((short)end.Length);
+                        dwriter.Write(end);
                     }
                     break;
             }
@@ -131,6 +172,13 @@ namespace IDWDBClient
         {
             Name = name;
         }
+       
+        public TableQuery UseTransaction()
+        {
+            ops.Add(new QueryOperation(Name) { type = QueryOpType.UseTransaction });
+            return this;
+        }
+
         /// <summary>
         /// Retrieves a list of data given by the specified range (exclusive)
         /// </summary>
@@ -138,17 +186,42 @@ namespace IDWDBClient
         /// <returns></returns>
         public TableQuery Retrieve(Range range)
         {
-            List<Range> fetch_ranges = new List<Range>();
-            if(Last?.type == QueryOpType.FetchRanges)
-            {
-                fetch_ranges = Last.value as List<Range>;
-            }else
-            {
-                ops.Add(new QueryOperation(Name) { type = QueryOpType.FetchRanges, value = fetch_ranges });
-            }
-            fetch_ranges.Add(range);
+            ops.Add(new QueryOperation(Name) { type = QueryOpType.FetchRange, value = range });
+            
             return this;
         }
+        /// <summary>
+        /// Deletes all values in the specified range (exclusive)
+        /// </summary>
+        /// <param name="range">The range to delete</param>
+        /// <returns></returns>
+        public TableQuery Delete(Range range)
+        {
+            ops.Add(new QueryOperation(Name) { type = QueryOpType.RangeDelete, value = range });
+            return this;
+        }
+
+        /// <summary>
+        /// Deletes a list of items, by primary key
+        /// </summary>
+        /// <param name="keys">The keys to delete</param>
+        /// <returns></returns>
+        public TableQuery Delete(IEnumerable<object> keys)
+        {
+            List<object> delete_keys = new List<object>();
+            if (Last?.type == QueryOpType.Delete)
+            {
+                delete_keys = Last.value as List<object>;
+            }
+            else
+            {
+                ops.Add(new QueryOperation(Name) { type = QueryOpType.Delete, value = delete_keys });
+            }
+            delete_keys.AddRange(keys);
+            return this;
+        }
+
+
         /// <summary>
         /// Retrieves a list of rows matching the specified keys
         /// </summary>

@@ -48,13 +48,13 @@
     <Compile Include="Queries.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Natives\Natives.csproj">
+    <Content Include="COPYING.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Natives\Natives.csproj">
       <Project>{390863e8-5a77-46ca-9d5f-f3a3d021003e}</Project>
       <Name>Natives</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="COPYING.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
