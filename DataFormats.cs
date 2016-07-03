@@ -100,6 +100,8 @@ namespace IDWDBClient
                     return mreader.ReadString();
                 case 7:
                     return mreader.ReadBytes(mreader.ReadInt32());
+                case 8:
+                    return new Guid(mreader.ReadBytes(16));
             }
             throw new InvalidDataException("Attempted to read an unsupported data type. The database client for this language either does not recognize the specified encoding; a non-standard encoding was used for this database, or this client is out-of-date and needs to be updated.");
         }
@@ -162,7 +164,15 @@ namespace IDWDBClient
                                             mwriter.Write(obj as byte[]);
                                         }else
                                         {
-                                            throw new NotImplementedException("Unsupported data type: " + obj.GetType() + ". Please contact IDWDB support if you would like support for this data type.");
+                                            if (obj.GetType() == typeof(Guid))
+                                            {
+                                                mwriter.Write((byte)8);
+                                                mwriter.Write(((Guid)obj).ToByteArray());
+                                            }
+                                            else
+                                            {
+                                                throw new NotImplementedException("Unsupported data type: " + obj.GetType() + ". Please contact IDWDB support if you would like support for this data type.");
+                                            }
                                         }
                                     }
                                 }
