@@ -19,7 +19,10 @@ namespace IDWDBClient
 
             foreach (var iable in value.GetType().GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
             {
-                boat.AddColumn(iable.Name, iable.GetValue(value));
+                if (iable.GetValue(value) != null)
+                {
+                    boat.AddColumn(iable.Name, iable.GetValue(value));
+                }
             }
             return query.InsertOrReplace(boat);
 
