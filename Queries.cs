@@ -172,7 +172,15 @@ namespace IDWDBClient
         {
             Name = name;
         }
-       
+        /// <summary>
+        /// Adds a query involving an additional table to this one, and returns the new query. THIS IS NOT THE SAME AS A JOIN OPERATION!
+        /// </summary>
+        /// <param name="name">The name of the table to chain</param>
+        /// <returns></returns>
+       public TableQuery Chain(string name)
+        {
+            return new TableQuery(name) { ops = ops };
+        }
         public TableQuery UseTransaction()
         {
             ops.Add(new QueryOperation(Name) { type = QueryOpType.UseTransaction });
