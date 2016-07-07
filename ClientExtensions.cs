@@ -27,7 +27,7 @@ namespace IDWDBClient
             var pk = mobile.GetType().GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public).Where(m => m.CustomAttributes.Where(a => a.AttributeType == typeof(System.ComponentModel.DataAnnotations.KeyAttribute)).Any());
             if(pk.Any())
             {
-                pk.First().SetValue(pk, row.PK);
+                pk.First().SetValue(mobile, row.PK);
             }
             return mobile;
         }
